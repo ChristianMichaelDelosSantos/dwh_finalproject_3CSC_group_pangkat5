@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: shopzada_postgres
+    environment:
+      POSTGRES_USER: shopzada
+      POSTGRES_PASSWORD: shopzada
+      POSTGRES_DB: shopzada_dwh
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  airflow:
+    image: apache/airflow:2.8.1
+    container_name: shopzada_airflow
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://shopzada:shopzada@postgres:5432/shopzada_dwh
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ../pipelines:/opt/airflow/dags
+      - ../transformations:/opt/airflow/transformations
+      - ../models:/opt/airflow/models
+    ports:
+      - "8080:8080"
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com &&
+      airflow webserver
+      "
+
+volumes:
+  postgres_data:
